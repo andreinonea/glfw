@@ -864,8 +864,12 @@ struct _GLFWlibrary
     } vk;
 
     struct {
-        GLFWmonitorfun  monitor;
-        GLFWjoystickfun joystick;
+        GLFWmonitorfun        monitor;
+        GLFWjoystickfun       joystick;
+        GLFWjoystickaxisfun   joystick_axis;
+        GLFWjoystickbuttonfun joystick_button;
+        GLFWjoystickhatfun    joystick_hat;
+        GLFWgamepadstatefun   gamepad_state;
     } callbacks;
 
     // These are defined in platform.h

@@ -411,6 +411,19 @@ void _glfwInputDrop(_GLFWwindow* window, int count, const char** paths)
         window->callbacks.drop((GLFWwindow*) window, count, paths);
 }
 
+// Notifies shared code of a change in the gamepad state.
+// Automatically recalculates the state if the gamepad callback is installed.
+void _glfwInputGamepad(_GLFWjoystick* js)
+{
+    const int jid = (int) (js - _glfw.joysticks);
+    if (glfwJoystickIsGamepad(jid)  && (_glfw.callbacks.gamepad_state)) {
+        GLFWgamepadstate state;
+        if (0 == glfwGetGamepadState(jid, &state)) {
+          _glfw.callbacks.gamepad_state(jid, &state);
+        }
+    }
+}
+
 // Notifies shared code of a joystick connection or disconnection
 //
 void _glfwInputJoystick(_GLFWjoystick* js, int event)
@@ -435,7 +448,13 @@ void _glfwInputJoystickAxis(_GLFWjoystick* js, int axis, float value)
     assert(axis >= 0);
     assert(axis < js->axisCount);
 
+    const int jid = (int) (js - _glfw.joysticks);
+
     js->axes[axis] = value;
+
+    if (_glfw.callbacks.joystick_axis)
+        _glfw.callbacks.joystick_axis(jid, axis, value);
+    _glfwInputGamepad(js);
 }
 
 // Notifies shared code of the new value of a joystick button
@@ -447,15 +466,19 @@ void _glfwInputJoystickButton(_GLFWjoystick* js, int button, char value)
     assert(button < js->buttonCount);
     assert(value == GLFW_PRESS || value == GLFW_RELEASE);
 
+    const int jid = (int) (js - _glfw.joysticks);
+
     js->buttons[button] = value;
+
+    if (_glfw.callbacks.joystick_button)
+        _glfw.callbacks.joystick_button(jid, button, value);
+    _glfwInputGamepad(js);
 }
 
 // Notifies shared code of the new value of a joystick hat
 //
 void _glfwInputJoystickHat(_GLFWjoystick* js, int hat, char value)
 {
-    int base;
-
     assert(js != NULL);
     assert(hat >= 0);
     assert(hat < js->hatCount);
@@ -466,7 +489,8 @@ void _glfwInputJoystickHat(_GLFWjoystick* js, int hat, char value)
     assert((value & GLFW_HAT_LEFT) == 0 || (value & GLFW_HAT_RIGHT) == 0);
     assert((value & GLFW_HAT_UP) == 0 || (value & GLFW_HAT_DOWN) == 0);
 
-    base = js->buttonCount + hat * 4;
+    const int jid = (int) (js - _glfw.joysticks);
+    const int base = js->buttonCount + hat * 4;
 
     js->buttons[base + 0] = (value & 0x01) ? GLFW_PRESS : GLFW_RELEASE;
     js->buttons[base + 1] = (value & 0x02) ? GLFW_PRESS : GLFW_RELEASE;
@@ -474,6 +498,10 @@ void _glfwInputJoystickHat(_GLFWjoystick* js, int hat, char value)
     js->buttons[base + 3] = (value & 0x08) ? GLFW_PRESS : GLFW_RELEASE;
 
     js->hats[hat] = value;
+
+    if (_glfw.callbacks.joystick_hat)
+        _glfw.callbacks.joystick_hat(jid, hat, value);
+    _glfwInputGamepad(js);
 }
 
 
@@ -1251,6 +1279,35 @@ GLFWAPI GLFWjoystickfun glfwSetJoystickCallback(GLFWjoystickfun cbfun)
     return cbfun;
 }
 
+GLFWAPI GLFWgamepadstatefun glfwSetGamepadStateCallback(GLFWgamepadstatefun cbfun)
+{
+    _GLFW_REQUIRE_INIT_OR_RETURN(NULL);
+    _GLFW_SWAP_POINTERS(_glfw.callbacks.gamepad_state, cbfun);
+    return cbfun;
+}
+
+GLFWAPI GLFWjoystickbuttonfun glfwSetJoystickButtonCallback(GLFWjoystickbuttonfun cbfun)
+{
+    _GLFW_REQUIRE_INIT_OR_RETURN(NULL);
+    _GLFW_SWAP_POINTERS(_glfw.callbacks.joystick_button, cbfun);
+    return cbfun;
+}
+
+GLFWAPI GLFWjoystickaxisfun glfwSetJoystickAxisCallback(GLFWjoystickaxisfun cbfun)
+{
+    _GLFW_REQUIRE_INIT_OR_RETURN(NULL);
+    _GLFW_SWAP_POINTERS(_glfw.callbacks.joystick_axis, cbfun);
+    return cbfun;
+}
+
+GLFWAPI GLFWjoystickhatfun glfwSetJoystickHatCallback(GLFWjoystickhatfun cbfun)
+{
+    _GLFW_REQUIRE_INIT_OR_RETURN(NULL);
+    _GLFW_SWAP_POINTERS(_glfw.callbacks.joystick_hat, cbfun);
+    return cbfun;
+}
+
+
 GLFWAPI int glfwUpdateGamepadMappings(const char* string)
 {
     int jid;
@@ -1502,4 +1559,3 @@ GLFWAPI uint64_t glfwGetTimerFrequency(void)
     _GLFW_REQUIRE_INIT_OR_RETURN(0);
     return _glfwPlatformGetTimerFrequency();
 }
-

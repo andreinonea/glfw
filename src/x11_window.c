@@ -98,7 +98,7 @@ static GLFWbool waitForAnyEvent(double* timeout)
         fds[count++] = (struct pollfd) { _glfw.linjs.inotify, POLLIN };
         for (int jid = 0; jid <= GLFW_JOYSTICK_LAST; ++jid)
         {
-            if (_glfw.joysticks[jid].present)
+            if (_glfw.joysticks[jid].connected)
                 fds[count++] = (struct pollfd) { _glfw.joysticks[jid].linjs.fd, POLLIN };
         }
     }
